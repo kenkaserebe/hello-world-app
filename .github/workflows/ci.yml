@@ -1,0 +1,90 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-west-2       
+  ECR_REPOSITORY: ken-eks-cluster-app-repo    # Match your ECR repo name
+  ACR_REPOSITORY: hello-world                 # The repository name inside ACR
+  ACR_NAME: kenaksclusteracr                  # Your ACR login server prefix
+  GITOPS_REPO: araalkaz/hello-world-gitops    # GitOps repo (owner/name)
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout application code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get AWS account ID
+        id: aws_account
+        run: echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_OUTPUT
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR via az
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Get short SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.aws_account.outputs.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.sha_short }}
+            ${{ env.ACR_NAME }}.azurecr.io/${{ env.ACR_REPOSITORY }}:${{ steps.vars.outputs.sha_short }}
+            ${{ steps.aws_account.outputs.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
+            ${{ env.ACR_NAME }}.azurecr.io/${{ env.ACR_REPOSITORY }}:latest
+
+      - name: Clone GitOps repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPO }}
+          path: gitops
+          token: ${{ secrets.GITOPS_REPO_PAT }}
+
+      - name: Update image tags in GitOps manifests
+        run: |
+          cd gitops
+
+          # Configure remote URL with the token
+          git remote set-url origin https://x-access-token:${{ secrets.GITOPS_REPO_PAT }}@github.com/${{ env.GITOPS_REPO }}.git
+          
+          # Update AWS deployment
+          sed -i "s|image: .*|image: ${{ steps.aws_account.outputs.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.sha_short }}|" aws/deployment.yaml
+          
+          # Update Azure deployment
+          sed -i "s|image: .*|image: ${{ env.ACR_NAME }}.azurecr.io/${{ env.ACR_REPOSITORY }}:${{ steps.vars.outputs.sha_short }}|" azure/deployment.yaml
+          
+          # Optional: also update any other files (e.g, if using Kustomize)
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add aws/deployment.yaml azure/deployment.yaml
+          git commit -m "Update image tag to ${{ steps.vars.outputs.sha_short }}"
+          git push
+
+      - name: Verify ArgoCD sync (optional)
+        run: echo "ArgoCD will sync automatically. Check the UI."
