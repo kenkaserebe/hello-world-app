@@ -66,6 +66,20 @@ jobs:
           path: gitops
           token: ${{ secrets.GITOPS_REPO_PAT }}
 
+      - name: List GitOps repo contents
+        run: |
+          ls -la gitops/
+          ls -la gitops/aws/ || echo "aws/ directory not found"
+          ls -la gitops/azure/ || echo "azure/ directory not found"
+          if [ -f gitops/aws/deployment.yaml ]; then
+            echo "=== aws/deployment.yaml content ==="
+            cat gitops/aws/deployment.yaml
+          fi
+          if [ -f gitops/azure/deployment.yaml ]; then
+            echo "=== azure/deployment.yaml content ==="
+            cat gitops/azure/deployment.yaml
+          fi
+
       - name: Update image tags in GitOps manifests
         run: |
           cd gitops
