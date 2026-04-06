@@ -91,7 +91,7 @@ jobs:
           sed -i "s|^[[:space:]]*image:.*|          image: ${{ steps.aws_account.outputs.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.sha_short }}|" aws/deployment.yaml
 
           # Update Azure deployment
-          sed -i "s|image: .*|image: ${{ env.ACR_NAME }}.azurecr.io/${{ env.ACR_REPOSITORY }}:${{ steps.vars.outputs.sha_short }}|" azure/deployment.yaml
+          sed -i "s|^[[:space:]]*image:.*|          image: ${{ env.ACR_NAME }}.azurecr.io/${{ env.ACR_REPOSITORY }}:${{ steps.vars.outputs.sha_short }}|" azure/deployment.yaml
           
           # Optional: also update any other files (e.g, if using Kustomize)
           git config user.name "GitHub Actions"
