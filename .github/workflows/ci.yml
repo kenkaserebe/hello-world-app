@@ -90,7 +90,7 @@ jobs:
           # Configure remote URL with the token
           git remote set-url origin https://x-access-token:${{ secrets.GITOPS_REPO_PAT }}@github.com/${{ env.GITOPS_REPO }}.git
           
-          # TEST AGAIN
+          # TEST AGAIN & AGAIN
           # Update AWS deployment image
           yq eval '.spec.template.spec.containers[0].image = "${{ steps.aws_account.outputs.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.sha_short }}"' -i aws/deployment.yaml
 
