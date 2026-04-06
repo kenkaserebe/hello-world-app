@@ -10,7 +10,7 @@ env:
   ECR_REPOSITORY: ken-eks-cluster-app-repo            # Match your ECR repo name
   ACR_REPOSITORY: hello-world                         # The repository name inside ACR
   ACR_NAME: kenaksclusteracr                          # Your ACR login server prefix
-  GITOPS_REPO: kenkaserebe/hello-world-gitops.git     # GitOps repo (owner/name)
+  GITOPS_REPO: kenkaserebe/hello-world-gitops         # GitOps repo (owner/name)
 
 jobs:
   build-and-deploy:
