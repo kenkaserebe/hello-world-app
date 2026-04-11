@@ -1,1 +1,3 @@
+# multi-cloud-gitops-platform/hello-world-app/requirements.txt
+
 Flask==2.3.3
