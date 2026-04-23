@@ -7,6 +7,7 @@ app = Flask(__name__)
 @app.route('/')
 def hello():
     # Optionally show which cloud (you can pass an env var)
+    # This comment is to test if this works right.
     cloud = os.environ.get('CLOUD', 'unknown')
     return f"Hello from {cloud}!\n"
 
